@@ -15,7 +15,7 @@ const firebaseConfig = {
 
 // --- ¡IMPORTANTE! ---
 // Pega aquí el ID de tu carpeta 'artifacts'
-const ARTIFACTS_DOCUMENT_ID = 'WkVsarS3pp4gQzoT9ZE1'; // <--- ¡¡¡REEMPLAZA ESTO!!!
+const ARTIFACTS_DOCUMENT_ID = 'WkVsarS3pp4gQzoT9ZE1'; // <-- ¡¡¡REEMPLAZA ESTO!!!
 
 function App() {
   const [products, setProducts] = useState(null);
