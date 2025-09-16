@@ -5,12 +5,12 @@ import { getFirestore, collection, onSnapshot, doc, addDoc, updateDoc, writeBatc
 // --- ¡IMPORTANTE! ---
 // Pega aquí tu configuración de Firebase
 const firebaseConfig = {
-    apiKey: "TU_API_KEY",
-    authDomain: "popeyon-tienda.firebaseapp.com",
-    projectId: "popeyon-tienda",
-    storageBucket: "popeyon-tienda.appspot.com",
-    messagingSenderId: "TUS_DATOS",
-    appId: "TUS_DATOS"
+  apiKey: "AIzaSyBvHbhzTnYJCX7Ti7WhyhFljQ8p6KE4Kgg",
+  authDomain: "popeyon-tienda.firebaseapp.com",
+  projectId: "popeyon-tienda",
+  storageBucket: "popeyon-tienda.firebasestorage.app",
+  messagingSenderId: "472510549759",
+  appId: "1:472510549759:web:a08d1639a6e5b4ab0b86ca"
 };
 
 // --- ¡IMPORTANTE! ---
