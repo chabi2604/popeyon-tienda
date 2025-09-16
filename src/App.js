@@ -15,7 +15,7 @@ const firebaseConfig = {
 
 // --- ¡IMPORTANTE! ---
 // Pega aquí el ID de tu carpeta 'artifacts'
-const ARTIFACTS_DOCUMENT_ID = 'WkVsarS3pp4gQzoT9ZE1'; // <-- ¡¡¡REEMPLAZA ESTO!!!
+const ARTIFACTS_DOCUMENT_ID = 'TU_ARTIFACTS_ID'; // <--- ¡¡¡REEMPLAZA ESTO!!!
 
 function App() {
   const [products, setProducts] = useState(null);
@@ -25,9 +25,13 @@ function App() {
 
   useEffect(() => {
     try {
-      const app = initializeApp(firebaseConfig);
-      const firestoreDb = getFirestore(app);
-      setDb(firestoreDb);
+      if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY") {
+        const app = initializeApp(firebaseConfig);
+        const firestoreDb = getFirestore(app);
+        setDb(firestoreDb);
+      } else {
+        console.warn("Firebase config is missing or using placeholder values.");
+      }
     } catch (e) { console.error("Error al inicializar Firebase.", e); }
   }, []);
 
@@ -37,8 +41,13 @@ function App() {
       const unsubscribe = onSnapshot(collection(db, productsCollectionPath), (snapshot) => {
         const productsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setProducts(productsData.filter(p => p.stock > 0));
+      }, (error) => {
+          console.error("Error fetching products:", error);
+          setProducts([]); // Evita que la app se quede en blanco si hay error
       });
       return () => unsubscribe();
+    } else {
+        setProducts([]);
     }
   }, [db]);
 
@@ -174,7 +183,15 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
 
     const handleGetLocation = () => {
         if (!navigator.geolocation) { alert("Tu navegador no soporta la geolocalización."); return; }
+        
         setIsLocating(true);
+
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 10000, // 10 segundos de tiempo de espera
+            maximumAge: 0
+        };
+
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const { latitude, longitude } = position.coords;
@@ -182,22 +199,35 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
                 setIsLocating(false);
                 alert("¡Ubicación capturada! La dirección manual ahora es opcional.");
             },
-            () => {
+            (error) => {
                 setIsLocating(false);
-                alert("No se pudo obtener la ubicación. Asegúrate de haber dado permiso en el navegador.");
-            }
+                let errorMessage = "No se pudo obtener la ubicación. ";
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += "Negaste el permiso. Revisa la configuración de Safari.";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += "La información de ubicación no está disponible.";
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += "La solicitud de ubicación tardó demasiado.";
+                        break;
+                    default:
+                        errorMessage += "Ocurrió un error desconocido.";
+                        break;
+                }
+                alert(errorMessage);
+            },
+            options
         );
     };
 
     const handleCheckout = async (e) => {
         e.preventDefault();
         if (cart.length === 0) return;
-
-        // --- ¡LA CORRECCIÓN ESTÁ AQUÍ! ---
-        // Verificación manual antes de enviar
         if (isAddressRequired && (!customerData.address || !customerData.city || !customerData.zipCode)) {
             alert("Por favor, completa los campos de dirección o usa la ubicación GPS.");
-            return; // Detiene el envío del formulario
+            return;
         }
 
         const batch = writeBatch(db);
@@ -219,7 +249,7 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
     return (
         <div className="bg-gray-800 rounded-xl p-6 shadow-lg border border-white/10 max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold text-amber-400 mb-4">Información de Entrega</h2>
-            <form onSubmit={handleCheckout} className="space-y-4" noValidate> {/* Añadimos noValidate para controlar nosotros la validación */}
+            <form onSubmit={handleCheckout} className="space-y-4" noValidate>
                 <button type="button" onClick={handleGetLocation} disabled={isLocating} className="w-full flex items-center justify-center p-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition disabled:bg-blue-800 disabled:cursor-wait">
                     📍 {isLocating ? 'Obteniendo ubicación...' : 'Usar mi ubicación actual (Recomendado)'}
                 </button>
