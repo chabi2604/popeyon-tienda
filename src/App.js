@@ -5,12 +5,12 @@ import { getFirestore, collection, onSnapshot, doc, addDoc, updateDoc, writeBatc
 // --- ¡IMPORTANTE! ---
 // Pega aquí tu configuración de Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyBvHbhzTnYJCX7Ti7WhyhFljQ8p6KE4Kgg",
-  authDomain: "popeyon-tienda.firebaseapp.com",
-  projectId: "popeyon-tienda",
-  storageBucket: "popeyon-tienda.firebasestorage.app",
-  messagingSenderId: "472510549759",
-  appId: "1:472510549759:web:a08d1639a6e5b4ab0b86ca"
+    apiKey: "AIzaSyBvHbhzTnYJCX7Ti7WhyhFljQ8p6KE4Kgg",
+    authDomain: "popeyon-tienda.firebaseapp.com",
+    projectId: "popeyon-tienda",
+    storageBucket: "popeyon-tienda.firebasestorage.app",
+    messagingSenderId: "472510549759",
+    appId: "1:472510549759:web:a08d1639a6e5b4ab0b86ca"
 };
 
 // --- ¡IMPORTANTE! ---
@@ -43,13 +43,13 @@ function App() {
         setProducts(productsData.filter(p => p.stock > 0));
       }, (error) => {
           console.error("Error fetching products:", error);
-          setProducts([]); // Evita que la app se quede en blanco si hay error
+          setProducts([]);
       });
       return () => unsubscribe();
     } else {
         setProducts([]);
     }
-  }, [db]);
+  }, [db, ARTIFACTS_DOCUMENT_ID]);
 
   const addToCart = (product) => {
     setCart(currentCart => {
@@ -183,15 +183,8 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
 
     const handleGetLocation = () => {
         if (!navigator.geolocation) { alert("Tu navegador no soporta la geolocalización."); return; }
-        
         setIsLocating(true);
-
-        const options = {
-            enableHighAccuracy: true,
-            timeout: 10000, // 10 segundos de tiempo de espera
-            maximumAge: 0
-        };
-
+        const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const { latitude, longitude } = position.coords;
@@ -203,18 +196,10 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
                 setIsLocating(false);
                 let errorMessage = "No se pudo obtener la ubicación. ";
                 switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        errorMessage += "Negaste el permiso. Revisa la configuración de Safari.";
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        errorMessage += "La información de ubicación no está disponible.";
-                        break;
-                    case error.TIMEOUT:
-                        errorMessage += "La solicitud de ubicación tardó demasiado.";
-                        break;
-                    default:
-                        errorMessage += "Ocurrió un error desconocido.";
-                        break;
+                    case error.PERMISSION_DENIED: errorMessage += "Negaste el permiso. Revisa la configuración de Safari."; break;
+                    case error.POSITION_UNAVAILABLE: errorMessage += "La información de ubicación no está disponible."; break;
+                    case error.TIMEOUT: errorMessage += "La solicitud de ubicación tardó demasiado."; break;
+                    default: errorMessage += "Ocurrió un error desconocido."; break;
                 }
                 alert(errorMessage);
             },
@@ -225,9 +210,11 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
     const handleCheckout = async (e) => {
         e.preventDefault();
         if (cart.length === 0) return;
-        if (isAddressRequired && (!customerData.address || !customerData.city || !customerData.zipCode)) {
+
+        const isAddressFilled = customerData.address && customerData.city && customerData.zipCode;
+        if (!customerData.coordinates && !isAddressFilled) {
             alert("Por favor, completa los campos de dirección o usa la ubicación GPS.");
-            return;
+            return; 
         }
 
         const batch = writeBatch(db);
@@ -258,9 +245,9 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
                 <input type="text" name="name" onChange={handleChange} placeholder="Nombre Completo" className="w-full p-2 bg-gray-700 rounded" required />
                 <input type="tel" name="phone" onChange={handleChange} placeholder="Teléfono" className="w-full p-2 bg-gray-700 rounded" required />
                 
-                <input type="text" name="address" value={customerData.address} onChange={handleChange} placeholder={isAddressRequired ? "Calle y Número (Obligatorio)" : "Calle y Número (Opcional)"} className="w-full p-2 bg-gray-700 rounded" required={isAddressRequired} />
-                <input type="text" name="city" value={customerData.city} onChange={handleChange} placeholder={isAddressRequired ? "Colonia y Ciudad (Obligatorio)" : "Colonia y Ciudad (Opcional)"} className="w-full p-2 bg-gray-700 rounded" required={isAddressRequired} />
-                <input type="text" name="zipCode" value={customerData.zipCode} onChange={handleChange} placeholder={isAddressRequired ? "Código Postal (Obligatorio)" : "Código Postal (Opcional)"} className="w-full p-2 bg-gray-700 rounded" required={isAddressRequired} />
+                <input type="text" name="address" value={customerData.address} onChange={handleChange} placeholder="Calle y Número" className="w-full p-2 bg-gray-700 rounded" />
+                <input type="text" name="city" value={customerData.city} onChange={handleChange} placeholder="Colonia y Ciudad" className="w-full p-2 bg-gray-700 rounded" />
+                <input type="text" name="zipCode" value={customerData.zipCode} onChange={handleChange} placeholder="Código Postal" className="w-full p-2 bg-gray-700 rounded" />
                 
                 <textarea name="references" onChange={handleChange} placeholder="Referencias de entrega (ej. fachada azul, dejar en recepción...)" className="w-full p-2 bg-gray-700 rounded h-20"></textarea>
                 
