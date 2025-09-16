@@ -177,7 +177,6 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
     const [customerData, setCustomerData] = useState({ name: '', phone: '', address: '', city: '', zipCode: '', references: '', coordinates: null });
     const [isLocating, setIsLocating] = useState(false);
     const total = cart.reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0);
-    const isAddressRequired = customerData.coordinates === null;
 
     const handleChange = (e) => setCustomerData({ ...customerData, [e.target.name]: e.target.value });
 
@@ -211,6 +210,7 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
         e.preventDefault();
         if (cart.length === 0) return;
 
+        // --- ¡EL GUARDIA DE SEGURIDAD INTELIGENTE! ---
         const isAddressFilled = customerData.address && customerData.city && customerData.zipCode;
         if (!customerData.coordinates && !isAddressFilled) {
             alert("Por favor, completa los campos de dirección o usa la ubicación GPS.");
@@ -236,7 +236,8 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
     return (
         <div className="bg-gray-800 rounded-xl p-6 shadow-lg border border-white/10 max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold text-amber-400 mb-4">Información de Entrega</h2>
-            <form onSubmit={handleCheckout} className="space-y-4" noValidate>
+            {/* Añadimos noValidate para decirle a Safari que no se meta */}
+            <form onSubmit={handleCheckout} className="space-y-4" noValidate> 
                 <button type="button" onClick={handleGetLocation} disabled={isLocating} className="w-full flex items-center justify-center p-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition disabled:bg-blue-800 disabled:cursor-wait">
                     📍 {isLocating ? 'Obteniendo ubicación...' : 'Usar mi ubicación actual (Recomendado)'}
                 </button>
@@ -245,6 +246,7 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
                 <input type="text" name="name" onChange={handleChange} placeholder="Nombre Completo" className="w-full p-2 bg-gray-700 rounded" required />
                 <input type="tel" name="phone" onChange={handleChange} placeholder="Teléfono" className="w-full p-2 bg-gray-700 rounded" required />
                 
+                {/* --- ¡SIN CANDADOS! --- */}
                 <input type="text" name="address" value={customerData.address} onChange={handleChange} placeholder="Calle y Número" className="w-full p-2 bg-gray-700 rounded" />
                 <input type="text" name="city" value={customerData.city} onChange={handleChange} placeholder="Colonia y Ciudad" className="w-full p-2 bg-gray-700 rounded" />
                 <input type="text" name="zipCode" value={customerData.zipCode} onChange={handleChange} placeholder="Código Postal" className="w-full p-2 bg-gray-700 rounded" />
