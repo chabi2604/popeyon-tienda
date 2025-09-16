@@ -17,14 +17,6 @@ const firebaseConfig = {
 // Pega aquí el ID de tu carpeta 'artifacts'
 const ARTIFACTS_DOCUMENT_ID = 'WkVsarS3pp4gQzoT9ZE1'; // <--- ¡¡¡REEMPLAZA ESTO!!!
 
-const LoadingScreen = () => (
-    <div className="bg-gray-900 min-h-screen flex flex-col items-center justify-center text-white font-sans">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-amber-400 mb-4"></div>
-        <h1 className="text-3xl font-extrabold text-amber-400">Popey<span className="text-white">ón</span></h1>
-        <p className="text-slate-400 mt-2">Cargando suplementos...</p>
-    </div>
-);
-
 function App() {
   const [products, setProducts] = useState(null);
   const [cart, setCart] = useState([]);
@@ -64,7 +56,6 @@ function App() {
   const updateCartQuantity = (productId, newQuantity) => {
       const productInStore = products.find(p => p.id === productId);
       if (newQuantity > productInStore.stock) return;
-
       if (newQuantity <= 0) {
           setCart(cart.filter(item => item.id !== productId));
       } else {
@@ -89,6 +80,14 @@ function App() {
     </div>
   );
 }
+
+const LoadingScreen = () => (
+    <div className="bg-gray-900 min-h-screen flex flex-col items-center justify-center text-white font-sans">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-amber-400 mb-4"></div>
+        <h1 className="text-3xl font-extrabold text-amber-400">Popey<span className="text-white">ón</span></h1>
+        <p className="text-slate-400 mt-2">Cargando suplementos...</p>
+    </div>
+);
 
 const Header = ({ cartCount, setView, currentView }) => (
     <header className="flex justify-between items-center py-4 mb-6 border-b border-white/10">
@@ -133,7 +132,7 @@ const ProductGrid = ({ products, addToCart }) => (
 );
 
 const CartView = ({ cart, updateCartQuantity, setView }) => {
-    const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const total = cart.reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0);
     return (
         <div className="bg-gray-800 rounded-xl p-6 shadow-lg border border-white/10 max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold text-amber-400 mb-4">Tu Carrito</h2>
@@ -149,7 +148,7 @@ const CartView = ({ cart, updateCartQuantity, setView }) => {
                                     <button onClick={() => updateCartQuantity(item.id, item.quantity + 1)} className="bg-gray-700 h-6 w-6 rounded">+</button>
                                 </div>
                             </div>
-                            <p className="font-mono">${(item.price * item.quantity).toFixed(2)}</p>
+                            <p className="font-mono">${((item.price || 0) * item.quantity).toFixed(2)}</p>
                         </div>
                     ))}
                     <div className="border-t border-white/10 pt-4 mt-4 flex justify-between items-center">
@@ -168,15 +167,13 @@ const CartView = ({ cart, updateCartQuantity, setView }) => {
 const CheckoutView = ({ cart, db, setCart, setView }) => {
     const [customerData, setCustomerData] = useState({ name: '', phone: '', address: '', city: '', zipCode: '', references: '', coordinates: null });
     const [isLocating, setIsLocating] = useState(false);
-    const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const total = cart.reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0);
     const isAddressRequired = customerData.coordinates === null;
+
     const handleChange = (e) => setCustomerData({ ...customerData, [e.target.name]: e.target.value });
 
     const handleGetLocation = () => {
-        if (!navigator.geolocation) {
-            alert("Tu navegador no soporta la geolocalización.");
-            return;
-        }
+        if (!navigator.geolocation) { alert("Tu navegador no soporta la geolocalización."); return; }
         setIsLocating(true);
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -195,6 +192,14 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
     const handleCheckout = async (e) => {
         e.preventDefault();
         if (cart.length === 0) return;
+
+        // --- ¡LA CORRECCIÓN ESTÁ AQUÍ! ---
+        // Verificación manual antes de enviar
+        if (isAddressRequired && (!customerData.address || !customerData.city || !customerData.zipCode)) {
+            alert("Por favor, completa los campos de dirección o usa la ubicación GPS.");
+            return; // Detiene el envío del formulario
+        }
+
         const batch = writeBatch(db);
         const orderData = { customer: customerData, items: cart.map(({ id, name, price, quantity }) => ({ id, name, price, quantity })), total, status: 'pendiente', createdAt: new Date() };
         const ordersCollectionPath = `artifacts/${ARTIFACTS_DOCUMENT_ID}/users/ADMIN_USER_ID/orders`;
@@ -214,17 +219,21 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
     return (
         <div className="bg-gray-800 rounded-xl p-6 shadow-lg border border-white/10 max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold text-amber-400 mb-4">Información de Entrega</h2>
-            <form onSubmit={handleCheckout} className="space-y-4">
+            <form onSubmit={handleCheckout} className="space-y-4" noValidate> {/* Añadimos noValidate para controlar nosotros la validación */}
                 <button type="button" onClick={handleGetLocation} disabled={isLocating} className="w-full flex items-center justify-center p-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition disabled:bg-blue-800 disabled:cursor-wait">
                     📍 {isLocating ? 'Obteniendo ubicación...' : 'Usar mi ubicación actual (Recomendado)'}
                 </button>
                 {customerData.coordinates && <p className="text-green-400 text-sm text-center">✓ Coordenadas GPS capturadas. La dirección manual es opcional.</p>}
+                
                 <input type="text" name="name" onChange={handleChange} placeholder="Nombre Completo" className="w-full p-2 bg-gray-700 rounded" required />
                 <input type="tel" name="phone" onChange={handleChange} placeholder="Teléfono" className="w-full p-2 bg-gray-700 rounded" required />
-                <input type="text" name="address" onChange={handleChange} placeholder={isAddressRequired ? "Calle y Número" : "Calle y Número (Opcional)"} className="w-full p-2 bg-gray-700 rounded" required={isAddressRequired} />
-                <input type="text" name="city" onChange={handleChange} placeholder={isAddressRequired ? "Colonia y Ciudad" : "Colonia y Ciudad (Opcional)"} className="w-full p-2 bg-gray-700 rounded" required={isAddressRequired} />
-                <input type="text" name="zipCode" onChange={handleChange} placeholder={isAddressRequired ? "Código Postal" : "Código Postal (Opcional)"} className="w-full p-2 bg-gray-700 rounded" required={isAddressRequired} />
+                
+                <input type="text" name="address" value={customerData.address} onChange={handleChange} placeholder={isAddressRequired ? "Calle y Número (Obligatorio)" : "Calle y Número (Opcional)"} className="w-full p-2 bg-gray-700 rounded" required={isAddressRequired} />
+                <input type="text" name="city" value={customerData.city} onChange={handleChange} placeholder={isAddressRequired ? "Colonia y Ciudad (Obligatorio)" : "Colonia y Ciudad (Opcional)"} className="w-full p-2 bg-gray-700 rounded" required={isAddressRequired} />
+                <input type="text" name="zipCode" value={customerData.zipCode} onChange={handleChange} placeholder={isAddressRequired ? "Código Postal (Obligatorio)" : "Código Postal (Opcional)"} className="w-full p-2 bg-gray-700 rounded" required={isAddressRequired} />
+                
                 <textarea name="references" onChange={handleChange} placeholder="Referencias de entrega (ej. fachada azul, dejar en recepción...)" className="w-full p-2 bg-gray-700 rounded h-20"></textarea>
+                
                 <div className="border-t border-white/10 pt-4 mt-4">
                     <p className="text-2xl font-bold text-amber-400 text-right">Total: ${total.toFixed(2)}</p>
                 </div>
