@@ -23,8 +23,7 @@ function App() {
   const [view, setView] = useState('store');
   const [db, setDb] = useState(null);
 
-  // ... (código de useEffect para inicializar Firebase y cargar productos sin cambios) ...
-    useEffect(() => {
+  useEffect(() => {
     try {
       const app = initializeApp(firebaseConfig);
       const firestoreDb = getFirestore(app);
@@ -43,9 +42,28 @@ function App() {
     }
   }, [db]);
 
+  const addToCart = (product) => {
+    setCart(currentCart => {
+      const existingItem = currentCart.find(item => item.id === product.id);
+      if (existingItem) {
+        if (existingItem.quantity >= product.stock) return currentCart;
+        return currentCart.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...currentCart, { ...product, quantity: 1 }];
+    });
+  };
+  
+  const updateCartQuantity = (productId, newQuantity) => {
+      const productInStore = products.find(p => p.id === productId);
+      if (newQuantity > productInStore.stock) return;
 
-  const addToCart = (product) => { /* ... (código sin cambios) ... */ };
-  const updateCartQuantity = (productId, newQuantity) => { /* ... (código sin cambios) ... */ };
+      if (newQuantity <= 0) {
+          setCart(cart.filter(item => item.id !== productId));
+      } else {
+          setCart(cart.map(item => item.id === productId ? { ...item, quantity: newQuantity } : item));
+      }
+  };
+  
   const cartItemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
@@ -60,9 +78,81 @@ function App() {
   );
 }
 
-const Header = ({/* ... (código sin cambios) ... */});
-const ProductGrid = ({/* ... (código sin cambios) ... */});
-const CartView = ({/* ... (código sin cambios) ... */});
+const Header = ({ cartCount, setView, currentView }) => (
+    <header className="flex justify-between items-center py-4 mb-6 border-b border-white/10">
+        <div onClick={() => setView('store')} className="cursor-pointer">
+            <h1 className="text-3xl font-extrabold text-amber-400">Popey<span className="text-white">ón</span></h1>
+            <p className="text-slate-400">Suplementos para campeones</p>
+        </div>
+        {currentView !== 'checkout' && (
+            <button onClick={() => setView('cart')} className="relative bg-amber-500 text-gray-900 font-bold py-2 px-4 rounded-lg flex items-center transition-transform hover:scale-105">
+                🛒 Carrito
+                {cartCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                        {cartCount}
+                    </span>
+                )}
+            </button>
+        )}
+    </header>
+);
+
+const ProductGrid = ({ products, addToCart }) => (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {products.length === 0 && <p className="col-span-full text-center text-slate-400">Conectando con el inventario...</p>}
+        {products.map(product => (
+            <div key={product.id} className="bg-gray-800 rounded-xl overflow-hidden shadow-lg border border-white/10 flex flex-col group transition-all duration-300 hover:border-amber-500/50 hover:scale-105">
+                <div className="aspect-square w-full overflow-hidden">
+                    <img src={product.imageUrl || 'https://placehold.co/400x400/2d3748/e2e8f0?text=Popey%C3%B3n'} alt={product.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                </div>
+                <div className="p-4 flex flex-col flex-grow">
+                    <h2 className="text-lg font-bold text-white truncate flex-grow">{product.name}</h2>
+                    <p className="text-slate-400 text-sm capitalize mb-2">{product.category}</p>
+                    <div className="flex justify-between items-center mt-auto pt-2">
+                        <p className="text-xl font-mono text-amber-400">${product.price ? parseFloat(product.price).toFixed(2) : '0.00'}</p>
+                        <button onClick={() => addToCart(product)} className="bg-amber-500 text-gray-900 font-bold text-sm py-1 px-3 rounded-md hover:bg-amber-600 transition-colors">
+                            Agregar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        ))}
+    </div>
+);
+
+const CartView = ({ cart, updateCartQuantity, setView }) => {
+    const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    return (
+        <div className="bg-gray-800 rounded-xl p-6 shadow-lg border border-white/10 max-w-2xl mx-auto">
+            <h2 className="text-2xl font-bold text-amber-400 mb-4">Tu Carrito</h2>
+            {cart.length === 0 ? <p className="text-slate-400">No hay productos en tu carrito.</p> : (
+                <div className="space-y-4">
+                    {cart.map(item => (
+                        <div key={item.id} className="flex justify-between items-center">
+                            <div>
+                                <h3 className="font-bold">{item.name}</h3>
+                                <div className="flex items-center mt-1">
+                                    <button onClick={() => updateCartQuantity(item.id, item.quantity - 1)} className="bg-gray-700 h-6 w-6 rounded">-</button>
+                                    <span className="w-10 text-center">{item.quantity}</span>
+                                    <button onClick={() => updateCartQuantity(item.id, item.quantity + 1)} className="bg-gray-700 h-6 w-6 rounded">+</button>
+                                </div>
+                            </div>
+                            <p className="font-mono">${(item.price * item.quantity).toFixed(2)}</p>
+                        </div>
+                    ))}
+                    <div className="border-t border-white/10 pt-4 mt-4 flex justify-between items-center">
+                        <p className="text-xl font-bold">TOTAL:</p>
+                        <p className="text-2xl font-bold text-amber-400">${total.toFixed(2)}</p>
+                    </div>
+                    <button onClick={() => setView('checkout')} className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition-colors">
+                        Proceder al Pago
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const CheckoutView = ({ cart, db, setCart, setView }) => {
     const [customerData, setCustomerData] = useState({ 
@@ -75,7 +165,6 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
 
     const handleChange = (e) => setCustomerData({ ...customerData, [e.target.name]: e.target.value });
 
-    // --- ¡NUEVA FUNCIÓN DE GPS! ---
     const handleGetLocation = () => {
         if (!navigator.geolocation) {
             alert("Tu navegador no soporta la geolocalización.");
@@ -101,12 +190,11 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
 
     const handleCheckout = async (e) => {
         e.preventDefault();
-        // ... (resto de la lógica de handleCheckout sin cambios, ya que customerData ahora incluye los nuevos campos)
         if (cart.length === 0) return;
 
         const batch = writeBatch(db);
         const orderData = {
-            customer: customerData, // customerData ya tiene los nuevos campos
+            customer: customerData,
             items: cart.map(({ id, name, price, quantity }) => ({ id, name, price, quantity })),
             total,
             status: 'pendiente',
@@ -143,8 +231,6 @@ const CheckoutView = ({ cart, db, setCart, setView }) => {
                 <input type="text" name="address" onChange={handleChange} placeholder="Calle y Número" className="w-full p-2 bg-gray-700 rounded" required />
                 <input type="text" name="city" onChange={handleChange} placeholder="Colonia y Ciudad" className="w-full p-2 bg-gray-700 rounded" required />
                 <input type="text" name="zipCode" onChange={handleChange} placeholder="Código Postal" className="w-full p-2 bg-gray-700 rounded" required />
-                
-                {/* --- ¡NUEVO CAMPO DE REFERENCIAS! --- */}
                 <textarea name="references" onChange={handleChange} placeholder="Referencias de entrega (ej. fachada azul, dejar en recepción...)" className="w-full p-2 bg-gray-700 rounded h-20"></textarea>
 
                 <div className="border-t border-white/10 pt-4 mt-4">
